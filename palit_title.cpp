@@ -9,11 +9,17 @@ namespace cr_lvl {
         _block = block;
         _window = &window;
         _pos = pos;
+        _base.setPosition(sf::Vector2f(_pos.x, _pos.y));
+        _block->setPosition(sf::Vector2f(_pos.x + 37, _pos.y + 37));
         _base.setFillColor(sf::Color(125, 131, 255));
         
     }
-    void palit_title::draw(int pos_y) {
-        _pos.y = pos_y;
+    void palit_title::move(sf::Vector2i pos) {
+        _pos = pos;
+        _base.setPosition(sf::Vector2f(_pos.x, _pos.y));
+        _block->setPosition(sf::Vector2f(_pos.x + 37, _pos.y + 37));
+    }
+    void palit_title::draw() {
         _base.setPosition(sf::Vector2f(_pos.x, _pos.y));
         _block->setPosition(sf::Vector2f(_pos.x + 37, _pos.y + 37));
         _window->draw(_base);

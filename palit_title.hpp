@@ -15,7 +15,8 @@ namespace cr_lvl {
         sf::Vector2i _pos = {0,0};
     public:
         palit_title::palit_title(sf::Vector2i size, sf::Vector2i pos, sf::RectangleShape *block, std::string text_name, sf::RenderWindow &window);
-        void draw(int pos_y);
+        void draw();
+        void palit_title::move(sf::Vector2i pos);
         sf::Vector2i getpos();
         std::string get_text_name();
         ~palit_title();
