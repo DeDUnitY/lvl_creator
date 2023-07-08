@@ -1,4 +1,4 @@
-﻿#include <SFML/Graphics.hpp>
+#include <SFML/Graphics.hpp>
 #include <filesystem>
 #include <iostream>
 #include <chrono>
@@ -49,6 +49,10 @@ public:
         _button->setPosition(_button->getPosition() + pos);
     }
 
+    void set_outline(int size) {
+        _button->setOutlineThickness(size);
+    }
+
     sf::Vector2f get_pos() {
         return _button->getPosition();
     }
@@ -63,13 +67,13 @@ class Instrument{
     std::vector<cr_lvl::palit_title> _palit;
     std::vector<Button> _buttons;
     sf::RenderWindow* _window;
+    cr_lvl::text_drawler* _texter;
+    
     sf::RectangleShape* _palit_title_block;
-    sf::RectangleShape* _tool_block;
     sf::Vector2i _pos = { 0,0 }; 
-    Instrument(sf::Vector2i pos, sf::RenderWindow* window, sf::RectangleShape* palit_title_block, sf::RectangleShape* tool_block, std::vector<Button> buttons) {
+    Instrument(sf::Vector2i pos, sf::RenderWindow* window, std::vector<Button> buttons, cr_lvl::text_drawler *texter) {
+        _texter = texter;
         _buttons = buttons;
-        _tool_block = tool_block;
-        _palit_title_block = palit_title_block;
         _window = window;
         _pos = pos;
     }
@@ -79,11 +83,21 @@ class Instrument{
         for (int i = 0; i < _palit.size(); i++) {
             _palit[i].move(_palit[i].getpos() + pos);
         }
-        _palit_title_block->setPosition(_palit_title_block->getPosition() + sf::Vector2f(pos));
-        _tool_block->setPosition(_tool_block->getPosition() + sf::Vector2f(pos));
         for (int i = 0; i < _buttons.size(); i++) {
+            std::cout << 1 << std::endl;
             _buttons[i].move(sf::Vector2f(pos));
         }
+        
+    }
+    void draw() {
+        for (int i = 0; i < _buttons.size(); i++) {
+            _window->draw(*_buttons[i].ret());
+        }
+        for (int i = 0; i < _palit.size(); i++) {
+            _palit[i].draw();
+            _texter->draw(_palit[i].get_text_name(), { _palit[i].getpos().x + 70, _palit[i].getpos().y + 20 });
+        }
+        
     }
 
     std::vector <cr_lvl::palit_title>& return_palit() {
@@ -103,6 +117,7 @@ int main() {
     bool mouse_right_togle = false; // нажатие правой клавиши мыши
     int color = 1; // текущий цвет
     int temp;
+    std::string name_file;
     sf::Vector2i size_palit_title_block = { 250, 60 }; // размер подложки цвета
     sf::Vector2i temp_pos;
     sf::Vector2f delta_view;
@@ -112,12 +127,6 @@ int main() {
     int page = 0;
     int rotation = 0;
     int page_count;
-
-    // кнопка сохранения
-    Button save_button(sf::Vector2f( block_size.x,block_size.y ), sf::Vector2f(window_size.x - 115, 5 ), "icon/save.png", sf::Color(89, 101, 111));
-
-    // кнопка загрузки
-    Button load_button(sf::Vector2f(block_size.x, block_size.y), sf::Vector2f(window_size.x - 175, 5), "icon/load.png", sf::Color(89, 101, 111));
 
     // Поиск тайтлов
     const std::filesystem::path my_path{ "./titles" };
@@ -165,30 +174,29 @@ int main() {
     selection.setOutlineColor(sf::Color::Yellow);
     selection.setOutlineThickness(2);
 
+    //Button button(sf::Vector2f(block_size.x-2, block_size.y-2), sf::Vector2f(window_size.x - 115, 5), "icon/save.png", sf::Color(89, 101, 111));
     sf::RectangleShape button(sf::Vector2f(block_size.x - 4, block_size.y - 4));
     button.setOrigin(-2, -2);
     button.setFillColor(sf::Color(125, 131, 255));
     button.setOutlineColor(sf::Color(89, 101, 111));
     button.setOutlineThickness(1);
 
+    // кнопка сохранения
+    Button save_button(sf::Vector2f(block_size.x, block_size.y), sf::Vector2f(window_size.x - 115, 5), "icon/save.png", sf::Color(89, 101, 111));
+
+    // кнопка загрузки
+    Button load_button(sf::Vector2f(block_size.x, block_size.y), sf::Vector2f(window_size.x - 175, 5), "icon/load.png", sf::Color(89, 101, 111));
     // Панель тайтлов
-    sf::RectangleShape palit_title_block(
-        sf::Vector2f(size_palit_title_block.x, window_size.y - size_palit_title_block.y - 2));
-    palit_title_block.setPosition(0, size_palit_title_block.y + 2);
-    palit_title_block.setFillColor(sf::Color(130, 212, 187));
-    palit_title_block.setOutlineThickness(3);
-    palit_title_block.setOutlineColor(sf::Color(89, 101, 111));
+    Button palit_title_block(sf::Vector2f(size_palit_title_block.x, window_size.y - size_palit_title_block.y - 2), sf::Vector2f(0, size_palit_title_block.y + 2), sf::Color(130, 212, 187), sf::Color(89, 101, 111));
+    palit_title_block.set_outline(3);
     sf::Vector2i size_title_block = { block_size.x * 2, block_size.y * 3 };
 
     // верхняя панель
-    sf::RectangleShape tool_block(sf::Vector2f(window_size.x, size_palit_title_block.y));
-    tool_block.setPosition(0, -1);
-    tool_block.setFillColor(sf::Color(130, 212, 187));
-    tool_block.setOutlineThickness(3);
-    tool_block.setOutlineColor(sf::Color(89, 101, 111));
+    Button tool_block(sf::Vector2f(window_size.x+2, size_palit_title_block.y+2), sf::Vector2f(0, -1), sf::Color(130, 212, 187), sf::Color(89, 101, 111));
+    tool_block.set_outline(3);
     
     // Панели инструментов
-    Instrument new_tools({ 0,0 }, &window, &palit_title_block, &tool_block, { save_button, load_button });
+    Instrument new_tools({ 0,0 }, &window, { palit_title_block, tool_block, save_button, load_button }, &texter);
     for (int i = 0; i < files.size(); i++) {
         new_tools.return_palit().push_back(cr_lvl::palit_title(size_title_block, { 25 , 87 + i * 100 - i / 8 * 800 }, blocks[i].return_block(), files[i], window));
     }
@@ -323,15 +331,13 @@ int main() {
 
         window.draw(canvas);
         window.draw(selection);
-        window.draw(tool_block);
+        new_tools.draw();
         // Отрисовка и выбор тайтлов
-        window.draw(palit_title_block);
+        new_tools.draw();
         for (int i = 8 * page; i < new_tools.return_palit().size() && i < page * 8 + 8; i++) {
 
             if (check_colision(new_tools.return_palit()[i].getpos(), { 200, 74 }, mouse_position) && mouse_left_togle)
                 color = i + 1;
-            new_tools.return_palit()[i].draw();//87 + (i - 8 * page) * 100);
-            texter.draw(new_tools.return_palit()[i].get_text_name(), { new_tools.return_palit()[i].getpos().x + 70, new_tools.return_palit()[i].getpos().y + 20 });
         }
         // Выбор страницы
         button.setFillColor(sf::Color(125, 131, 255));
