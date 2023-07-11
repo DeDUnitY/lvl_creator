@@ -1,4 +1,4 @@
-#include <SFML/Graphics.hpp>
+﻿#include <SFML/Graphics.hpp>
 #include <filesystem>
 #include <iostream>
 #include <chrono>
@@ -80,13 +80,13 @@ class Instrument{
 
     void move(sf::Vector2i pos) {
         _pos += pos;
-        for (int i = 0; i < _palit.size(); i++) {
-            _palit[i].move(_palit[i].getpos() + pos);
-        }
-        for (int i = 0; i < _buttons.size(); i++) {
-            std::cout << 1 << std::endl;
-            _buttons[i].move(sf::Vector2f(pos));
-        }
+        //for (int i = 0; i < _palit.size(); i++) {
+        //    _palit[i].move(_palit[i].getpos() + pos);
+        //}
+        //for (int i = 0; i < _buttons.size(); i++) {
+        //    std::cout << 1 << std::endl;
+        //    _buttons[i].move(sf::Vector2f(pos));
+        //}
         
     }
     void draw() {
@@ -105,6 +105,19 @@ class Instrument{
     }
 };
 
+void fill_matrix(std::vector<std::vector<int>>& matr, sf::Vector2i start, sf::Vector2i end, int num, bool box) {
+    for(int i = start.x; i <= end.x && i< matr.size(); i++){
+        for (int j = start.y; j <= end.y && j < matr[0].size(); j++) {
+            if ((box && (j== start.y|| j == end.y))|| !box)
+                matr[i][j] = num;
+            else {
+                matr[start.x][j] = num;
+                matr[end.x][j] = num;
+            }
+        }
+    }
+};
+
 int main() {
     std::string line;
     int start;
@@ -116,8 +129,10 @@ int main() {
     bool mouse_left_togle = false; // нажатие левой клавиши мыши
     bool mouse_right_togle = false; // нажатие правой клавиши мыши
     int color = 1; // текущий цвет
+    int instrument= 0;
     int temp;
     std::string name_file;
+    sf::Vector2i pos_canvas = {0,0};
     sf::Vector2i size_palit_title_block = { 250, 60 }; // размер подложки цвета
     sf::Vector2i temp_pos;
     sf::Vector2f delta_view;
@@ -127,6 +142,8 @@ int main() {
     int page = 0;
     int rotation = 0;
     int page_count;
+    sf::Clock timer;
+    double fps = 60;
 
     // Поиск тайтлов
     const std::filesystem::path my_path{ "./titles" };
@@ -154,7 +171,7 @@ int main() {
     sf::Vector2i corr_window = { 0, 0 };//{ -10, -30 };
     if (window.getSize().y == 1080)
         corr_window = { 0, 0 };
-    window.setFramerateLimit(1200);
+    //window.setFramerateLimit(1200);
     sf::View view = window.getDefaultView();
     window.setView(view);
     delta_view = { view.getCenter().x, view.getCenter().y };
@@ -162,11 +179,11 @@ int main() {
     cr_lvl::text_drawler texter("font.ttf", window);
     
     // выделение размера холста
-    sf::RectangleShape canvas(sf::Vector2f(window_size.x, window_size.y));
+    sf::RectangleShape canvas(sf::Vector2f(window_size.x-10, window_size.y-20));
     canvas.setFillColor(sf::Color(0, 0, 0, 0));
-    canvas.setOutlineColor(sf::Color::Cyan);
-    canvas.setOutlineThickness(50);
-    canvas.setPosition(sf::Vector2f( size_palit_title_block.x+4, size_palit_title_block.y+4 ));
+    canvas.setOutlineColor(sf::Color::Black);
+    canvas.setOutlineThickness(4);
+    canvas.setPosition(sf::Vector2f( size_palit_title_block.x+6, size_palit_title_block.y+7 ));
     // Выделение блока
     sf::RectangleShape selection(sf::Vector2f(block_size.x - 4, block_size.y - 4));
     selection.setOrigin(-2, -2);
@@ -174,8 +191,13 @@ int main() {
     selection.setOutlineColor(sf::Color::Yellow);
     selection.setOutlineThickness(2);
 
+    sf::RectangleShape cube(sf::Vector2f(24, 24));
+    cube.setFillColor(sf::Color(0, 0, 0));
+    cube.setOutlineColor(sf::Color(0, 0, 0));
+    cube.setOutlineThickness(2);
+
     //Button button(sf::Vector2f(block_size.x-2, block_size.y-2), sf::Vector2f(window_size.x - 115, 5), "icon/save.png", sf::Color(89, 101, 111));
-    sf::RectangleShape button(sf::Vector2f(block_size.x - 4, block_size.y - 4));
+    sf::RectangleShape button(sf::Vector2f(block_size.x - 2, block_size.y - 2));
     button.setOrigin(-2, -2);
     button.setFillColor(sf::Color(125, 131, 255));
     button.setOutlineColor(sf::Color(89, 101, 111));
@@ -186,6 +208,7 @@ int main() {
 
     // кнопка загрузки
     Button load_button(sf::Vector2f(block_size.x, block_size.y), sf::Vector2f(window_size.x - 175, 5), "icon/load.png", sf::Color(89, 101, 111));
+    Button tool_button1(sf::Vector2f(block_size.x, block_size.y), sf::Vector2f(300, 5), "icon/1tool.png", sf::Color(89, 101, 111));
     // Панель тайтлов
     Button palit_title_block(sf::Vector2f(size_palit_title_block.x, window_size.y - size_palit_title_block.y - 2), sf::Vector2f(0, size_palit_title_block.y + 2), sf::Color(130, 212, 187), sf::Color(89, 101, 111));
     palit_title_block.set_outline(3);
@@ -213,6 +236,8 @@ int main() {
     for (int i = 0; i < lvl_grid.size(); i++) {
         lvl_grid[i].resize((window_size.y) / block_size.y + 1);
     }
+    fill_matrix(lvl_grid, {3,3}, {6,5}, 2, false);
+
     std::vector<std::vector<int>> blocks_rotate;
     blocks_rotate.resize((window_size.x) / block_size.x + 1);
     for (int i = 0; i < blocks_rotate.size(); i++) {
@@ -236,21 +261,29 @@ int main() {
                 if (event.key.code == sf::Keyboard::Q)
                     rotation -= 1;
                 // Перемещение камеры
-                if (event.key.code == sf::Keyboard::Up){
-                    view.move(0.f, -70.f);
-                    new_tools.move({ 0, -70 });
+                if (event.key.code == sf::Keyboard::Up && pos_canvas.y!=0){
+                    pos_canvas.y -= 1;
+                    canvas.setPosition(canvas.getPosition() + sf::Vector2f(0, 1 * block_size.x));
+                    //view.move(0.f, -70.f);
+                    //new_tools.move({ 0, -70 });
                 }
-                if (event.key.code == sf::Keyboard::Down){
-                    view.move(0.f, 70.f);
-                    new_tools.move({ 0, 70 });
+                if (event.key.code == sf::Keyboard::Down && pos_canvas.y <1){
+                    pos_canvas.y += 1;
+                    canvas.setPosition(canvas.getPosition() + sf::Vector2f(0, -1 * block_size.x));
+                    //view.move(0.f, 70.f);
+                    //new_tools.move({ 0, 70 });
                 }
-                if (event.key.code == sf::Keyboard::Left){
-                    view.move(-260.f, 0.f);
-                    new_tools.move({ -260, 0 });
+                if (event.key.code == sf::Keyboard::Left && pos_canvas.x != 0){
+                    pos_canvas.x -= 5;
+                    canvas.setPosition(canvas.getPosition() + sf::Vector2f(5 * block_size.x, 0));
+                    //view.move(-260.f, 0.f);
+                    //new_tools.move({ -260, 0 });
                 }
-                if (event.key.code == sf::Keyboard::Right){
-                    view.move(260.f, 0.f);
-                    new_tools.move({ 260, 0 });
+                if (event.key.code == sf::Keyboard::Right && pos_canvas.x <5){
+                    pos_canvas.x += 5;
+                    canvas.setPosition(canvas.getPosition() + sf::Vector2f(-5 * block_size.x, 0));
+                    //view.move(260.f, 0.f);
+                    //new_tools.move({ 260, 0 });
                 }
                 window.setView(view);
             }
@@ -279,16 +312,16 @@ int main() {
 
         // Позиция мыши
         mouse_position = sf::Mouse::getPosition(window);
-        mouse_position = { mouse_position.x + (int)rel_pos_viev.x, mouse_position.y + (int)rel_pos_viev.y};
+        //mouse_position = { mouse_position.x + (int)rel_pos_viev.x, mouse_position.y + (int)rel_pos_viev.y};
         // Рисование
-        temp_pos = { (mouse_position.x - size_palit_title_block.x) / block_size.x,
-                    (mouse_position.y - size_palit_title_block.y) / block_size.y };
+        temp_pos = { (mouse_position.x - size_palit_title_block.x) / block_size.x+ pos_canvas.x,
+                    (mouse_position.y - size_palit_title_block.y) / block_size.y +pos_canvas.y };
         if (mouse_position.x > size_palit_title_block.x && temp_pos.x < lvl_grid.size() &&
             mouse_position.y > size_palit_title_block.y &&
             (mouse_position.y - size_palit_title_block.y) / block_size.y < lvl_grid[0].size()) {
             //window.setMouseCursorVisible(false);
-            selection.setPosition(temp_pos.x * block_size.x + size_palit_title_block.x,
-                temp_pos.y * block_size.y + size_palit_title_block.y);
+            selection.setPosition(((temp_pos.x - pos_canvas.x) * block_size.x + size_palit_title_block.x),
+                (temp_pos.y - pos_canvas.y) * block_size.y + size_palit_title_block.y);
             if (0 <= mouse_position.x / block_size.x + 1 <= lvl_grid.size() &&
                 0 <= mouse_position.y / block_size.y + 1 <= lvl_grid[0].size()) {
                 if (mouse_left_togle) {
@@ -302,21 +335,60 @@ int main() {
         }
         else selection.setPosition((int)rel_pos_viev.x, (int)rel_pos_viev.y);
 
+        if (check_colision(sf::Vector2i(load_button.get_pos()), { 50, 50 }, mouse_position) && mouse_left_togle) {
+            std::ifstream in("test.txt");
+            in >> line;
+            for (int i = 0; i < lvl_grid.size(); i++) {
+                for (int j = 0; j < lvl_grid[0].size(); j++)
+                    in >> lvl_grid[i][j];
+            }
+            in >> line;
+            for (int i = 0; i < blocks_rotate.size(); i++) {
+                for (int j = 0; j < blocks_rotate[0].size(); j++)
+                    in >> blocks_rotate[i][j];
+            }
+        }
+        if (check_colision(sf::Vector2i(save_button.get_pos()), { 50, 50 }, mouse_position) && mouse_left_togle) {
+            std::ofstream out("test.txt");
+            out << lvl_grid.size() << lvl_grid[0].size() << std::endl;
+            for (int i = 0; i < lvl_grid.size(); i++) {
+                for (int j = 0; j < lvl_grid[0].size(); j++)
+                    out << lvl_grid[i][j] << " ";
+                out << "\n";
+            }
+            out << blocks_rotate.size() << blocks_rotate[0].size() << std::endl;
+            for (int i = 0; i < blocks_rotate.size(); i++) {
+                for (int j = 0; j < blocks_rotate[0].size(); j++)
+                    out << blocks_rotate[i][j] << " ";
+                out << "\n";
+            }
+        }
+        // выбор тайтлов
+        for (int i = 8 * page; i < new_tools.return_palit().size() && i < page * 8 + 8; i++)
+            if (check_colision(new_tools.return_palit()[i].getpos(), { 200, 74 }, mouse_position) && mouse_left_togle)
+                color = i + 1;
+        if (check_colision({ window_size.x - 55 + new_tools._pos.x, 5 + new_tools._pos.y }, { 50, 50 }, mouse_position) && mouse_left_togle)
+            return 0;
+
+        if (timer.getElapsedTime().asMilliseconds() >= 1000/fps)
+        {
+            timer.restart();
+        
         // Отрисовка
         window.clear(sf::Color(196, 177, 174));//sf::Color(255,255,255));
-        for (int i = 0; i < lvl_grid.size(); i++)
-            for (int j = 0; j < lvl_grid[i].size(); j++) {
-                temp = lvl_grid[i][j];
-                if (0 < temp && blocks.size() >= temp) {
-                    blocks[temp - 1].return_block()->setPosition((i * block_size.x + size_palit_title_block.x + 25),
-                        j * block_size.y + size_palit_title_block.y + 25);
-                    blocks[temp - 1].return_block()->rotate(90 * blocks_rotate[i][j]);
-                    window.draw(*blocks[temp - 1].return_block());
-                    blocks[temp - 1].return_block()->rotate(-90 * blocks_rotate[i][j]);
+        for (int i = pos_canvas.x; i < lvl_grid.size(); i++)
+            for (int j = pos_canvas.y; j < lvl_grid[i].size(); j++) {
+                temp = lvl_grid[i][j]-1;
+               if (0 <= temp && blocks.size() >= temp) {
+                    blocks[temp].return_block()->setPosition(((i- pos_canvas.x) * block_size.x + size_palit_title_block.x + 25),
+                        (j- pos_canvas.y) * block_size.y + size_palit_title_block.y + 25);
+                    blocks[temp].return_block()->rotate(90 * blocks_rotate[i][j]);
+                    window.draw(*blocks[temp].return_block());
+                    blocks[temp].return_block()->rotate(-90 * blocks_rotate[i][j]);
                 }
             }
 
-
+       
         // Сетка
         if (flag_grid) {
             for (int i = 0; i < lvl_grid.size(); i++) {
@@ -332,13 +404,7 @@ int main() {
         window.draw(canvas);
         window.draw(selection);
         new_tools.draw();
-        // Отрисовка и выбор тайтлов
-        new_tools.draw();
-        for (int i = 8 * page; i < new_tools.return_palit().size() && i < page * 8 + 8; i++) {
-
-            if (check_colision(new_tools.return_palit()[i].getpos(), { 200, 74 }, mouse_position) && mouse_left_togle)
-                color = i + 1;
-        }
+        
         // Выбор страницы
         button.setFillColor(sf::Color(125, 131, 255));
         for (int i = 0; i < page_count; i++) {
@@ -358,41 +424,24 @@ int main() {
         texter.set_size(40);
         texter.draw("X", { window_size.x - 40 + new_tools._pos.x, 2 + new_tools._pos.y});
         texter.set_size(25);
-        if (check_colision({ window_size.x - 55 + new_tools._pos.x, 5 + new_tools._pos.y }, { 50, 50 }, mouse_position) && mouse_left_togle)
-            return 0;
-        if (check_colision(sf::Vector2i(save_button.get_pos()), { 50, 50 }, mouse_position) && mouse_left_togle) {
-            std::ofstream out("test.txt");
-            out << lvl_grid.size() << lvl_grid[0].size() << std::endl;
-            for (int i = 0; i < lvl_grid.size(); i++) {
-                for (int j = 0; j < lvl_grid[0].size(); j++)
-                    out << lvl_grid[i][j] << " ";
-                out << "\n";
-            }
-            out << blocks_rotate.size() << blocks_rotate[0].size() << std::endl;
-            for (int i = 0; i < blocks_rotate.size(); i++) {
-                for (int j = 0; j < blocks_rotate[0].size(); j++)
-                    out << blocks_rotate[i][j] << " ";
-                out << "\n";
-            }
-        }
-        if (check_colision(sf::Vector2i(load_button.get_pos()), { 50, 50 }, mouse_position) && mouse_left_togle) {
-            std::ifstream in("test.txt");
-            in >> line;
-            for (int i = 0; i < lvl_grid.size(); i++) {
-                for (int j = 0; j < lvl_grid[0].size(); j++)
-                    in >> lvl_grid[i][j];
-            }
-            in >> line;
-            for (int i = 0; i < blocks_rotate.size(); i++) {
-                for (int j = 0; j < blocks_rotate[0].size(); j++)
-                    in >> blocks_rotate[i][j];
-            }
-        }
-
+        
+        
+        button.setPosition(8, 5);
+        button.setFillColor(sf::Color(195, 195, 195));
+        cube.setPosition(21, 18);
+        window.draw(button);
+        window.draw(cube);
+        button.setPosition(63, 5);
+        cube.setFillColor(sf::Color(0, 0, 0, 0));
+        cube.setPosition(76, 18);
+        window.draw(button);
+        window.draw(cube);
+        cube.setFillColor(sf::Color(0, 0, 0));
         window.draw(*save_button.ret());
         window.draw(*load_button.ret());
+        window.draw(*tool_button1.ret());
         window.display();
-
+        }
     }
     return 0;
 }
